@@ -37,12 +37,17 @@ export async function registerUser(
 
                                                           if (data.user) {
                                                               await supabase.from("profiles").insert({
-                                                                    id: data.user.id,
-                                                                          full_name: fullName,
-                                                                                email,
-                                                                                      wallet_balance: 0,
-                                                                                          });
+                                                                  id: data.user.id,
+                                                                      full_name: fullName,
+                                                                          email,
+                                                                              wallet_balance: 0,
+                                                                                });
+
+                                                                                  await supabase.from("wallets").insert({
+                                                                                      user_id: data.user.id,
+                                                                                          balance: 0,
+                                                                                            });
                                                                                             }
 
-                                                                                              return { data };
-                                                                                              }
+                                                                                            return { data };
+                                                          }
