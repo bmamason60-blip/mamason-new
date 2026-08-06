@@ -1,3 +1,4 @@
+console.log("REGISTER FUNCTION STARTED");
 import { supabase } from "./supabase";
 
 export async function registerUser(
@@ -32,22 +33,34 @@ export async function registerUser(
                                                 email,
                                                     password,
                                                       });
+                                                      console.log("SIGNUP DATA:", data);
+                                                      console.log("SIGNUP ERROR:", error);
 
                                                         if (error) return { error };
 
                                                           if (data.user) {
-                                                              await supabase.from("profiles").insert({
-                                                                  id: data.user.id,
-                                                                      full_name: fullName,
-                                                                          email,
-                                                                              wallet_balance: 0,
+                                                              const { error: profileError } = await supabase
+                                                                .from("profiles")
+                                                                  .insert({
+                                                                      id: data.user.id,
+                                                                          full_name: fullName,
                                                                                 });
 
-                                                                                  await supabase.from("wallets").insert({
-                                                                                      user_id: data.user.id,
-                                                                                          balance: 0,
-                                                                                            });
-                                                                                            }
+                                                                                if (profileError) {
+                                                                                  console.error("Profile creation error:", profileError);
+                                                                                  }
 
-                                                                                            return { data };
-                                                          }
+                                                                                  const { error: walletError } = await supabase
+                                                                                    .from("wallets")
+                                                                                      .insert({
+                                                                                          user_id: data.user.id,
+                                                                                              balance: 0.00,
+                                                                                                });
+
+                                                                                                if (walletError) {
+                                                                                                  console.error("Wallet creation error:", walletError);
+                                                                                                  }
+
+                                                                                            return { data, error: null };
+                                                                                                }
+                                                                                              }
