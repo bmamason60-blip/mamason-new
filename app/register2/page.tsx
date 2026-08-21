@@ -17,17 +17,23 @@ export default function Register2Page() {
                   setLoading(true);
                       setMessage("");
 
-                          const { error } = await registerWithProfile(
-                                fullName,
-                                      email,
-                                            password
-                                                );
+                        const result = await registerWithProfile(
+                                  fullName,
+                                    email,
+                                      password
+                                      );
 
-                                                    if (error) {
-                                                          setMessage(error.message);
-                                                                setLoading(false);
-                                                                      return;
-                                                                          }
+                                      if (!result) {
+                                        setMessage("Registration failed");
+                                          setLoading(false);
+                                            return;
+                                            }
+
+                                            if ("error" in result && result.error) {
+                                              setMessage(result.error.message);
+                                                setLoading(false);
+                                                  return;
+                                                  }
 
                                                                               setMessage("Registration successful! Check your email.");
                                                                                   setTimeout(() => {
