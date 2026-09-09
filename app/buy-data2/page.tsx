@@ -1,173 +1,265 @@
 "use client";
+
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 
+type Plan = {
+  id: number | string;
+  name: string;
+  price: number | string;
+};
+
 export default function BuyDataPage() {
   const [network, setNetwork] = useState("1");
-    const [phone, setPhone] = useState("");
-      const [plans, setPlans] = useState<any[]>([]);
-        const [plan, setPlan] = useState("");
-          const [loading, setLoading] = useState(false);
-          const [userId, setUserId] = useState("");
+  const [phone, setPhone] = useState("");
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plan, setPlan] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [userId, setUserId] = useState("");
+  const [balance, setBalance] = useState(0);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
-            useEffect(() => {
-                fetchPlans();
-                  }, [network]);
-                  useEffect(() => {
-                          async function getUser() {
-                              const {
-                                    data: { user },
-                                        } = await supabase.auth.getUser();
+  useEffect(() => {
+    getUser();
+  }, []);
 
-                                            if (user) {
-                                                  setUserId(user.id);
-                                                      }
-                                                        }
+  useEffect(() => {
+    fetchPlans();
+  }, [network]);
 
-                                                          getUser();
-                                                          }, []);
+  async function getUser() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-                    async function fetchPlans() {
-                        try {
-                              const res = await fetch("/api/data-plans");
-                                    const data = await res.json();
+    if (!user) {
+      setUserId("");
+      return;
+    }
 
-                                          if (data.status) {
-                                                  setPlans(data.data[network] || []);
-                                                        } else {
-                                                                setPlans([]);
-                                                                      }
-                                                                          } catch (error) {
-                                                                                console.error(error);
-                                                                                      setPlans([]);
-                                                                                          }
-                                                                                            }
+    setUserId(user.id);
 
-                                                                                              async function handleBuy() {
-                                                                                                  if (!plan || !phone) {
-                                                                                                      alert("Please select a plan and enter phone number");
-                                                                                                          return;
-                                                                                                            }
+    const { data: wallet } = await supabase
+      .from("wallets")
+      .select("balance")
+      .eq("user_id", user.id)
+      .single();
 
-                                                                                                              const selectedPlan = plans.find(
-                                                                                                                  (item) => String(item.id) === String(plan)
-                                                                                                                    );
+    if (wallet) {
+      setBalance(Number(wallet.balance || 0));
+    }
+  }
 
-                                                                                                                      if (!selectedPlan) {
-                                                                                                                          alert("Selected data plan not found");
-                                                                                                                              return;
-                                                                                                                                }
+  async function fetchPlans() {
+    try {
+      setPlans([]);
+      setPlan("");
 
-                                                                                                                                  const amount = Number(selectedPlan.price);
+      const res = await fetch("/api/data-plans");
+      const data = await res.json();
 
-                                                                                                                                    if (!amount || amount <= 0) {
-                                                                                                                                        alert("Invalid data plan price");
-                                                                                                                                            return;
-                                                                                                                                              }
+      if (data.status && data.data?.[network]) {
+        setPlans(data.data[network]);
+      }
+    } catch (err) {
+      console.error("Plans error:", err);
+      setPlans([]);
+    }
+  }
 
-                                                                                                                                                try {
-                                                                                                                                                    setLoading(true);
+  async function handleBuy() {
+    setMessage("");
+    setError("");
 
-                                                                                                                                                        console.log({
-                                                                                                                                                              network_id: Number(network),
-                                                                                                                                                                    plan_id: Number(plan),
-                                                                                                                                                                          phone,
-                                                                                                                                                                                user_id: userId,
-                                                                                                                                                                                      amount,
-                                                                                                                                                                                          });
+    if (!userId) {
+      setError("Please login again.");
+      return;
+    }
 
-                                                                                                                                                                                              const res = await fetch("/api/buy-data", {
-                                                                                                                                                                                                    method: "POST",
-                                                                                                                                                                                                          headers: {
-                                                                                                                                                                                                                  "Content-Type": "application/json",
-                                                                                                                                                                                                                        },
-                                                                                                                                                                                                                              body: JSON.stringify({
-                                                                                                                                                                                                                                      network_id: Number(network),
-                                                                                                                                                                                                                                              plan_id: Number(plan),
-                                                                                                                                                                                                                                                      phone,
-                                                                                                                                                                                                                                                              user_id: userId,
-                                                                                                                                                                                                                                                                      amount,
-                                                                                                                                                                                                                                                                            }),
-                                                                                                                                                                                                                                                                                });
+    if (!plan) {
+      setError("Please select a data plan.");
+      return;
+    }
 
-                                                                                                                                                                                                                                                                                    const result = await res.json();
+    const cleanPhone = phone.replace(/\s/g, "");
 
-                                                                                                                                                                                                                                                                                        if (result.status) {
-                                                                                                                                                                                                                                                                                              alert("Data purchase successful");
-                                                                                                                                                                                                                                                                                                    setPhone("");
-                                                                                                                                                                                                                                                                                                          setPlan("");
-                                                                                                                                                                                                                                                                                                              } else {
-                                                                                                                                                                                                                                                                                                                    alert(result.message || "Purchase failed");
-                                                                                                                                                                                                                                                                                                                        }
-                                                                                                                                                                                                                                                                                                                          } catch (error) {
-                                                                                                                                                                                                                                                                                                                              console.error("Purchase error:", error);
-                                                                                                                                                                                                                                                                                                                                  alert("Something went wrong");
-                                                                                                                                                                                                                                                                                                                                    } finally {
-                                                                                                                                                                                                                                                                                                                                        setLoading(false);
-                                                                                                                                                                                                                                                                                                                                          }
-                                                                                                                                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                                                                                                                                          
+    if (!/^0[789][01]\d{8}$/.test(cleanPhone)) {
+      setError("Please enter a valid Nigerian phone number.");
+      return;
+    }
 
-                                                                                                                                                                                                                                                                                                                  return (    <div style={{ maxWidth: 400, margin: "40px auto", padding: 20 }}>
-                                                                                                                                                                                                                                                                                                                          <h1>Buy Data</h1>
+    const selectedPlan = plans.find(
+      (item) => String(item.id) === String(plan)
+    );
 
-                                                                                                                                                                                                                                                                                                                                <div style={{ marginBottom: 15 }}>
-                                                                                                                                                                                                                                                                                                                                        <label>Network</label>
-                                                                                                                                                                                                                                                                                                                                                <select
-                                                                                                                                                                                                                                                                                                                                                          value={network}
-                                                                                                                                                                                                                                                                                                                                                                    onChange={(e) => setNetwork(e.target.value)}
-                                                                                                                                                                                                                                                                                                                                                                              style={{ width: "100%", padding: 10 }}
-                                                                                                                                                                                                                                                                                                                                                                                      >
-                                                                                                                                                                                                                                                                                                                                                                                                <option value="1">MTN</option>
-                                                                                                                                                                                                                                                                                                                                                                                                          <option value="2">Airtel</option>
-                                                                                                                                                                                                                                                                                                                                                                                                                    <option value="3">9mobile</option>
-                                                                                                                                                                                                                                                                                                                                                                                                                              <option value="4">Glo</option>
-                                                                                                                                                                                                                                                                                                                                                                                                                                      </select>
-                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+    if (!selectedPlan) {
+      setError("Selected data plan not found.");
+      return;
+    }
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                  <div style={{ marginBottom: 15 }}>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                          <label>Data Plan</label>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <select
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                            value={plan}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      onChange={(e) => setPlan(e.target.value)}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                style={{ width: "100%", padding: 10 }}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        >
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <option value="">Select Data Plan</option>
+    const amount = Number(selectedPlan.price);
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            {plans.map((item) => (
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <option key={item.id} value={item.id}>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      {item.name} - ₦{item.price}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </option>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ))}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </select>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </div>
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError("Invalid data plan price.");
+      return;
+    }
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div style={{ marginBottom: 20 }}>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <label>Phone Number</label>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <input
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          type="tel"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    placeholder="08012345678"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              value={phone}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        onChange={(e) => setPhone(e.target.value)}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  style={{ width: "100%", padding: 10 }}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          />
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
+    if (balance < amount) {
+      setError("Insufficient wallet balance.");
+      return;
+    }
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      <button
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              onClick={handleBuy}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      disabled={loading}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              style={{
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        width: "100%",
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  padding: 12,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            background: "green",
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      color: "white",
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                border: "none",
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          borderRadius: 6,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    cursor: "pointer",
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  >
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          {loading ? "Processing..." : "Continue"}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </button>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      );
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      }
+    try {
+      setLoading(true);
+
+      const res = await fetch("/api/buy-data", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          network_id: Number(network),
+          plan_id: Number(plan),
+          phone: cleanPhone,
+          user_id: userId,
+          amount,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (result.success === true || result.status === true) {
+        setMessage("Data purchase successful!");
+        setPhone("");
+        setPlan("");
+        await getUser();
+      } else {
+        setError(result.message || "Data purchase failed.");
+      }
+    } catch (err) {
+      console.error("Purchase error:", err);
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const selectedPlan = plans.find(
+    (item) => String(item.id) === String(plan)
+  );
+
+  return (
+    <main className="min-h-screen bg-slate-950 px-4 py-8 text-white">
+      <div className="mx-auto w-full max-w-lg">
+        <div className="mb-6">
+          <p className="text-sm font-medium text-cyan-400">MAMASON DATA</p>
+          <h1 className="mt-1 text-3xl font-bold">Buy Data</h1>
+          <p className="mt-2 text-sm text-slate-400">
+            Choose a network and data plan, then enter the recipient number.
+          </p>
+        </div>
+
+        <div className="mb-6 rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-500/15 to-blue-500/10 p-5 shadow-lg shadow-cyan-950/20">
+          <p className="text-sm text-slate-400">Wallet Balance</p>
+          <p className="mt-1 text-3xl font-bold">
+            ₦{balance.toLocaleString("en-NG")}
+          </p>
+        </div>
+
+        <div className="space-y-5 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-300">
+              Network
+            </label>
+
+            <select
+              value={network}
+              onChange={(e) => setNetwork(e.target.value)}
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-400"
+            >
+              <option value="1">MTN</option>
+              <option value="2">Glo</option>
+              <option value="3">Airtel</option>
+              <option value="4">9mobile</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-300">
+              Data Plan
+            </label>
+
+            <select
+              value={plan}
+              onChange={(e) => setPlan(e.target.value)}
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-400"
+            >
+              <option value="">Select a data plan</option>
+
+              {plans.map((item) => (
+                <option key={item.id} value={String(item.id)}>
+                  {item.name} - ₦
+                  {Number(item.price).toLocaleString("en-NG")}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedPlan && (
+            <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-4">
+              <p className="text-xs uppercase tracking-wide text-cyan-300">
+                Selected Plan
+              </p>
+
+              <div className="mt-1 flex items-center justify-between gap-3">
+                <span className="font-semibold">{selectedPlan.name}</span>
+
+                <span className="text-lg font-bold text-cyan-300">
+                  ₦{Number(selectedPlan.price).toLocaleString("en-NG")}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-300">
+              Phone Number
+            </label>
+
+            <input
+              type="tel"
+              inputMode="numeric"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="08012345678"
+              maxLength={11}
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-cyan-400"
+            />
+          </div>
+
+          {error && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              {error}
+            </div>
+          )}
+
+          {message && (
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+              {message}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleBuy}
+            disabled={loading || plans.length === 0}
+            className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-3.5 font-semibold text-white shadow-lg shadow-cyan-950/30 transition hover:from-cyan-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? "Processing..." : "Buy Data"}
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+}
