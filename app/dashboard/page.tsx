@@ -136,6 +136,23 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 gap-4 mb-8">
 
           <button
+            onClick={() => router.push("/fund-wallet")}
+            className="rounded-2xl bg-slate-900 border border-slate-800 p-5 text-left hover:border-green-500 transition"
+          >
+            <div className="h-12 w-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-2xl mb-3">
+              💰
+            </div>
+
+            <h3 className="font-bold">
+              Fund Wallet
+            </h3>
+
+            <p className="text-xs text-slate-400 mt-1">
+              Add money to your Mamason wallet
+            </p>
+          </button>
+
+          <button
             onClick={() => router.push("/buy-data2")}
             className="rounded-2xl bg-slate-900 border border-slate-800 p-5 text-left hover:border-green-500 transition"
           >
