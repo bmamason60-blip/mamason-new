@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 
 export default function FundWalletPage() {
   const [amount, setAmount] = useState("");
+  const [method, setMethod] = useState("card");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -26,15 +27,29 @@ export default function FundWalletPage() {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          setMessage(data.error || data.message || "Payment verification failed");
+          setMessage(
+            data.error ||
+              data.message ||
+              "Payment verification failed"
+          );
           return;
         }
 
-        setMessage(`Payment successful! ₦${Number(data.amount).toLocaleString()} an ƙara cikin wallet.`);
+        setMessage(
+          `Payment successful! ₦${Number(
+            data.amount
+          ).toLocaleString()} an ƙara cikin wallet.`
+        );
 
-        window.history.replaceState({}, "", "/fund-wallet");
+        window.history.replaceState(
+          {},
+          "",
+          "/fund-wallet"
+        );
       } catch {
-        setMessage("An samu matsala wajen tabbatar da payment.");
+        setMessage(
+          "An samu matsala wajen tabbatar da payment."
+        );
       } finally {
         setLoading(false);
       }
@@ -48,8 +63,18 @@ export default function FundWalletPage() {
 
     const numericAmount = Number(amount);
 
-    if (!Number.isFinite(numericAmount) || numericAmount < 100) {
+    if (
+      !Number.isFinite(numericAmount) ||
+      numericAmount < 100
+    ) {
       setMessage("Minimum amount shine ₦100.");
+      return;
+    }
+
+    if (method !== "card") {
+      setMessage(
+        "Bank Transfer ba a kunna shi tukuna. Zaɓi Card Payment."
+      );
       return;
     }
 
@@ -61,66 +86,104 @@ export default function FundWalletPage() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        setMessage("Da fatan za ka fara login.");
+        setMessage("Da fatan ka fara login.");
         return;
       }
 
-      const response = await fetch("/api/paystack/initialize", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: user.email,
-          amount: numericAmount,
-          user_id: user.id,
-        }),
-      });
+      const response = await fetch(
+        "/api/paystack/initialize",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: user.email,
+            amount: numericAmount,
+            user_id: user.id,
+          }),
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        setMessage(data.error || "Payment initialization failed.");
+        setMessage(
+          data.error ||
+            "Payment initialization failed."
+        );
         return;
       }
 
-      window.location.href = data.authorization_url;
+      if (!data.authorization_url) {
+        setMessage(
+          "Paystack payment link bai dawo ba."
+        );
+        return;
+      }
+
+      window.location.href =
+        data.authorization_url;
     } catch {
-      setMessage("An samu matsala. Sake gwadawa.");
+      setMessage(
+        "An samu matsala. Sake gwadawa."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="max-w-md mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">
-        Fund Wallet
-      </h1>
+    <main className="min-h-screen bg-slate-950 text-white p-6">
+      <div className="max-w-md mx-auto pt-8">
+        <h1 className="text-3xl font-bold mb-8">
+          Fund Wallet
+        </h1>
 
-      <div className="space-y-4">
-        <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="Enter Amount"
-          className="w-full border rounded-lg p-3"
-          min="100"
-        />
+        <div className="space-y-5">
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) =>
+              setAmount(e.target.value)
+            }
+            placeholder="Enter Amount"
+            min="100"
+            className="w-full border border-slate-600 bg-slate-900 rounded-xl p-4 text-white outline-none"
+          />
 
-        <button
-          onClick={handlePayment}
-          disabled={loading}
-          className="w-full bg-green-600 text-white rounded-lg p-3 font-bold disabled:opacity-50"
-        >
-          {loading ? "Processing..." : "Continue to Pay"}
-        </button>
+          <select
+            value={method}
+            onChange={(e) =>
+              setMethod(e.target.value)
+            }
+            className="w-full border border-slate-600 bg-slate-900 rounded-xl p-4 text-white outline-none"
+          >
+            <option value="card">
+              Card Payment
+            </option>
 
-        {message && (
-          <p className="text-center font-medium">
-            {message}
-          </p>
-        )}
+            <option value="transfer">
+              Bank Transfer
+            </option>
+          </select>
+
+          <button
+            onClick={handlePayment}
+            disabled={loading}
+            className="w-full bg-green-600 hover:bg-green-700 text-white rounded-xl p-4 font-bold disabled:opacity-50"
+          >
+            {loading
+              ? "Processing..."
+              : "Continue"}
+          </button>
+
+          {message && (
+            <p className="text-center font-medium mt-4">
+              {message}
+            </p>
+          )}
+        </div>
       </div>
     </main>
   );
